@@ -61,7 +61,7 @@ const AutoRespuestaOptions: React.FC<{ flujo: string }> = ({ flujo }) => {
   }
 };
 
-const CreateForm = () => {
+const FormContent = () => {
   const {
     register,
     handleSubmit,
@@ -178,7 +178,7 @@ const Home: NextPage = () => {
       </Head>
 
       <main className="container mx-auto flex flex-col items-center justify-center min-h-screen p-4">
-        <CreateForm />
+        <FormContent />
       </main>
     </>
   );
