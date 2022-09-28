@@ -2,13 +2,7 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ErrorMessage } from "@hookform/error-message";
-import {
-  FieldErrorsImpl,
-  useForm,
-  UseFormRegister,
-  UseFormRegisterReturn,
-} from "react-hook-form";
+import { FieldErrorsImpl, useForm } from "react-hook-form";
 import React from "react";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
@@ -21,7 +15,6 @@ const formValidator = z.object({
     .string()
     .optional()
     .refine(s => {
-      // return s && s !== "" && s.length > 1;
       if (s === undefined) return true;
       return s.length > 1;
     }, "Auto respuesta requerida"),
@@ -74,28 +67,38 @@ const AutoRespuestaOptions: React.FC<{ flujo: string }> = ({ flujo }) => {
   }
 };
 
-const FormInput: React.FC<{
-  register: UseFormRegister<FormType>;
+const formInputClassName =
+  "w-full border text-base rounded-lg outline-none p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500";
+
+type FormInputType = {
   errors: FieldErrorsImpl<FormType>;
   input: keyof FormType;
-}> = ({ register, errors, input }) => {
-  <Tippy
-    content={
-      <div className="min-w-[1rem] min-h-[1rem]">{errors[input]?.message}</div>
-    }
-    visible={errors[input] ? true : false}
-    placement="top"
-    theme="error"
-  >
-    <input
-      {...register("nombreEmpresa")}
-      type="text"
-      placeholder="Nombre Empresa"
-      className="border text-base rounded-lg outline-none block w-full p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
-    />
-  </Tippy>;
-
-  return null;
+  children: React.ReactElement;
+  label: string;
+};
+const FormInput: React.FC<FormInputType> = ({
+  errors,
+  input,
+  children,
+  label,
+}) => {
+  return (
+    <div className={`w-full`}>
+      <p className="text-sm font-medium pb-2">{label}</p>
+      <Tippy
+        content={
+          <div className="min-w-[1rem] min-h-[1rem]">
+            {errors[input]?.message}
+          </div>
+        }
+        visible={errors[input] ? true : false}
+        placement="top"
+        theme="error"
+      >
+        {children}
+      </Tippy>
+    </div>
+  );
 };
 
 const FormContent = () => {
@@ -110,115 +113,81 @@ const FormContent = () => {
     resolver: zodResolver(formValidator),
     defaultValues: {
       autoRespuesta: undefined,
+      flujo: "",
     },
   });
 
+  const flujo = watch("flujo");
+
   React.useEffect(() => {
     if (
-      (watch("flujo") && watch("flujo") === "Completo") ||
-      watch("flujo") === "Clasifica y responde" ||
-      watch("flujo") === "Atiende"
+      (flujo && flujo === "Completo") ||
+      flujo === "Clasifica y responde" ||
+      flujo === "Atiende"
     ) {
       setValue("autoRespuesta", undefined);
     }
-  }, [watch("flujo")]);
+  }, [flujo]);
 
   return (
     <form
       onSubmit={handleSubmit(data => {
+        alert(
+          "nombre: " +
+            data.nombreEmpresa +
+            "\n" +
+            "tipo: " +
+            data.tipoEmpresa +
+            "\n" +
+            "flujo: " +
+            data.flujo +
+            "\n" +
+            "autoRespuesta: " +
+            data.autoRespuesta
+        );
         console.log(data);
       })}
       className="flex justify-center items-start p-4 flex-col bg-gray-800 rounded-lg gap-4 text-lg w-full md:w-1/2"
     >
-      <div className="w-full">
-        <p className="text-sm font-medium pb-2">Nombre Empresa</p>
-        <Tippy
-          content={
-            <div className="min-w-[1rem] min-h-[1rem]">
-              {errors.nombreEmpresa?.message}
-            </div>
-          }
-          visible={errors.nombreEmpresa ? true : false}
-          placement="top"
-          theme="error"
-        >
-          <input
-            {...register("nombreEmpresa")}
-            type="text"
-            placeholder="Nombre Empresa"
-            className="border text-base rounded-lg outline-none block w-full p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
-          />
-        </Tippy>
-      </div>
-      <div className="w-full">
-        <p className="text-sm font-medium pb-2">Tipo de empresa</p>
-        <Tippy
-          content={
-            <div className="min-w-[1rem] min-h-[1rem]">
-              {errors.tipoEmpresa?.message}
-            </div>
-          }
-          visible={errors.tipoEmpresa ? true : false}
-          placement="top"
-          theme="error"
-        >
-          <select
-            {...register("tipoEmpresa")}
-            className="w-full border text-base rounded-lg outline-none p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
+      <FormInput errors={errors} input="nombreEmpresa" label="Nombre Empresa">
+        <input
+          {...register("nombreEmpresa")}
+          type="text"
+          placeholder="Nombre Empresa"
+          className={formInputClassName}
+        />
+      </FormInput>
+      <FormInput errors={errors} input="tipoEmpresa" label="Tipo de empresa">
+        <select {...register("tipoEmpresa")} className={formInputClassName}>
+          <option value="" />
+          <option>Delivery</option>
+          <option>Social Listening</option>
+          <option>Mensajeria</option>
+        </select>
+      </FormInput>
+      <FormInput errors={errors} input="flujo" label="Flujo de empresa">
+        <select {...register("flujo")} className={formInputClassName}>
+          <option value="" />
+          <FlujoOptions tipoEmpresa={watch("tipoEmpresa")} />
+        </select>
+      </FormInput>
+      {flujo &&
+        flujo !== "Completo" &&
+        flujo !== "Clasifica y responde" &&
+        flujo !== "Atiende" && (
+          <FormInput
+            errors={errors}
+            input="autoRespuesta"
+            label="Auto Respuesta"
           >
-            <option value="" />
-            <option>Delivery</option>
-            <option>Social Listening</option>
-            <option>Mensajeria</option>
-          </select>
-        </Tippy>
-      </div>
-      <div className="w-full">
-        <p className="text-sm font-medium pb-2">Flujo de empresa</p>
-        <Tippy
-          content={
-            <div className="min-w-[1rem] min-h-[1rem]">
-              {errors.flujo?.message}
-            </div>
-          }
-          visible={errors.flujo ? true : false}
-          placement="top"
-          theme="error"
-        >
-          <select
-            {...register("flujo")}
-            className="w-full border text-base rounded-lg outline-none p-1.5 bg-gray-700 focus:bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="" />
-            <FlujoOptions tipoEmpresa={watch("tipoEmpresa")} />
-          </select>
-        </Tippy>
-      </div>
-      {watch("flujo") &&
-        watch("flujo") !== "Completo" &&
-        watch("flujo") !== "Clasifica y responde" &&
-        watch("flujo") !== "Atiende" && (
-          <div className="w-full">
-            <p className="text-sm font-medium pb-2">Auto Respuesta</p>
-            <Tippy
-              content={
-                <div className="min-w-[1rem] min-h-[1rem]">
-                  {errors.autoRespuesta?.message}
-                </div>
-              }
-              visible={errors.autoRespuesta ? true : false}
-              placement="top"
-              theme="error"
+            <select
+              {...register("autoRespuesta")}
+              className={formInputClassName}
             >
-              <select
-                {...register("autoRespuesta")}
-                className="w-full border text-base rounded-lg outline-none p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="" />
-                <AutoRespuestaOptions flujo={watch("flujo")} />
-              </select>
-            </Tippy>
-          </div>
+              <option value="" />
+              <AutoRespuestaOptions flujo={watch("flujo")} />
+            </select>
+          </FormInput>
         )}
       <button
         type="submit"
@@ -235,7 +204,7 @@ const Home: NextPage = () => {
     <>
       <Head>
         <title>Formulario</title>
-        <meta name="description" content="Generated by create-t3-app" />
+        <meta name="description" content="Formulario" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
