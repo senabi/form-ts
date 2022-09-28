@@ -3,7 +3,13 @@ import Head from "next/head";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ErrorMessage } from "@hookform/error-message";
-import { useForm } from "react-hook-form";
+import {
+  FieldErrorsImpl,
+  useForm,
+  UseFormRegister,
+  UseFormRegisterReturn,
+} from "react-hook-form";
+import React from "react";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
 
@@ -11,7 +17,14 @@ const formValidator = z.object({
   nombreEmpresa: z.string().min(1, { message: "Nombre de empresa requerido" }),
   tipoEmpresa: z.string().min(1, { message: "Tipo de empresa requerido" }),
   flujo: z.string().min(1, { message: "Flujo de empresa requerido" }),
-  autoRespuesta: z.string().optional(),
+  autoRespuesta: z
+    .string()
+    .optional()
+    .refine(s => {
+      // return s && s !== "" && s.length > 1;
+      if (s === undefined) return true;
+      return s.length > 1;
+    }, "Auto respuesta requerida"),
 });
 
 type FormType = z.infer<typeof formValidator>;
@@ -61,16 +74,54 @@ const AutoRespuestaOptions: React.FC<{ flujo: string }> = ({ flujo }) => {
   }
 };
 
+const FormInput: React.FC<{
+  register: UseFormRegister<FormType>;
+  errors: FieldErrorsImpl<FormType>;
+  input: keyof FormType;
+}> = ({ register, errors, input }) => {
+  <Tippy
+    content={
+      <div className="min-w-[1rem] min-h-[1rem]">{errors[input]?.message}</div>
+    }
+    visible={errors[input] ? true : false}
+    placement="top"
+    theme="error"
+  >
+    <input
+      {...register("nombreEmpresa")}
+      type="text"
+      placeholder="Nombre Empresa"
+      className="border text-base rounded-lg outline-none block w-full p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
+    />
+  </Tippy>;
+
+  return null;
+};
+
 const FormContent = () => {
   const {
     register,
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormType>({
     resolver: zodResolver(formValidator),
+    defaultValues: {
+      autoRespuesta: undefined,
+    },
   });
+
+  React.useEffect(() => {
+    if (
+      (watch("flujo") && watch("flujo") === "Completo") ||
+      watch("flujo") === "Clasifica y responde" ||
+      watch("flujo") === "Atiende"
+    ) {
+      setValue("autoRespuesta", undefined);
+    }
+  }, [watch("flujo")]);
 
   return (
     <form
@@ -143,19 +194,30 @@ const FormContent = () => {
           </select>
         </Tippy>
       </div>
-      {watch("flujo") !== "Completo" &&
-        watch("flujo") !== "Clasifica y responde" && (
+      {watch("flujo") &&
+        watch("flujo") !== "Completo" &&
+        watch("flujo") !== "Clasifica y responde" &&
+        watch("flujo") !== "Atiende" && (
           <div className="w-full">
-            <p className="text-sm font-medium pb-2">
-              Seleccione Auto Respuesta
-            </p>
-            <select
-              {...register("autoRespuesta")}
-              className="w-full border text-base rounded-lg outline-none p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
+            <p className="text-sm font-medium pb-2">Auto Respuesta</p>
+            <Tippy
+              content={
+                <div className="min-w-[1rem] min-h-[1rem]">
+                  {errors.autoRespuesta?.message}
+                </div>
+              }
+              visible={errors.autoRespuesta ? true : false}
+              placement="top"
+              theme="error"
             >
-              <option value="" />
-              <AutoRespuestaOptions flujo={watch("flujo")} />
-            </select>
+              <select
+                {...register("autoRespuesta")}
+                className="w-full border text-base rounded-lg outline-none p-1.5 bg-gray-700 border-gray-600 placeholder-gray-400 text-white focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="" />
+                <AutoRespuestaOptions flujo={watch("flujo")} />
+              </select>
+            </Tippy>
           </div>
         )}
       <button
